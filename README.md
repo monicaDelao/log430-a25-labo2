@@ -110,7 +110,29 @@ python3 -m pytest
 
 Si tous les tests passent ✅, vos implémentations sont correctes.
 
-## 📦 Livrables
+## � Déploiement
+
+### Déploiement local (développement)
+```bash
+docker compose build
+docker compose up -d
+```
+
+### Déploiement sur VM (production)
+```bash
+ssh log430@10.194.32.238
+cd ~/log430-a25-labo2
+./deploy.sh
+```
+
+### Pipeline CI/CD
+Le pipeline GitHub Actions se déclenche automatiquement et déploie sur la VM après succès des tests.
+
+**Documentation complète** :
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) - Guide de déploiement détaillé
+- [`FIREWALL.md`](FIREWALL.md) - Configuration du pare-feu VM
+
+## �📦 Livrables
 - Un fichier .zip contenant l’intégralité du code source du projet Labo 02.
 - Une vidéo expliquant les principales observations, décisions et défis/difficultés/problèmes rencontrés durant l'étape 1.
     - Exigences : Maximum 5 minutes, format .mp4 ou .webm. 
