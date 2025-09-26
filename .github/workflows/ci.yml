@@ -62,24 +62,12 @@ jobs:
           cd src
           python -m pytest ../src/tests/ -v
 
-  deploy:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-      - name: Deploy to VM
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: 10.194.32.238
-          username: log430
-          password: ${{ secrets.VM_PASSWORD }}
-          timeout: 120s
-          command_timeout: 300s
-          script: |
-            cd ~/log430-a25-labo2
-            git pull origin main
-            docker compose build
-            docker compose up -d
+  # Déploiement manuel requis - VM non accessible depuis GitHub Actions
+  # Pour déployer manuellement :
+  # 1. ssh log430@10.194.32.238
+  # 2. cd ~/log430-a25-labo2
+  # 3. git pull origin main
+  # 4. docker compose build
+  # 5. docker compose up -d
 
 
