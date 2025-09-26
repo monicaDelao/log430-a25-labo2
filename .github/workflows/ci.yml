@@ -74,6 +74,8 @@ jobs:
           host: 10.194.32.238
           username: log430
           password: ${{ secrets.VM_PASSWORD }}
+          timeout: 120s
+          command_timeout: 300s
           script: |
             cd ~/log430-a25-labo2
             git pull origin main
