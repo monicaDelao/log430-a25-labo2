@@ -64,7 +64,7 @@ def add_order(user_id: int, items: list):
 
         session.commit()
 
-        # TODO: ajouter la commande à Redis
+        # Insertion automatique dans Redis pour synchronisation
         add_order_to_redis(order_id, user_id, total_amount, items)
 
         return order_id
@@ -85,7 +85,7 @@ def delete_order(order_id: int):
             session.delete(order)
             session.commit()
 
-            # TODO: supprimer la commande à Redis
+            # Suppression automatique dans Redis pour synchronisation
             delete_order_from_redis(order_id)
             return 1  
         else:
@@ -99,31 +99,124 @@ def delete_order(order_id: int):
 
 def add_order_to_redis(order_id, user_id, total_amount, items):
     """Insert order to Redis"""
-    r = get_redis_conn()
-    print(r)
+    try:
+        r = get_redis_conn()
+        order_key = f"order:{order_id}"
+        
+        # Stocker les données principales de la commande dans une hash
+        order_data = {
+            'id': str(order_id),
+            'user_id': str(user_id),
+            'total_amount': str(total_amount),
+            'created_at': str(__import__('datetime').datetime.now())
+        }
+        
+        # Utiliser hset pour stocker les données de la commande
+        r.hset(order_key, mapping=order_data)
+        
+        # Ajouter l'ID de la commande dans le SET d'index pour pouvoir retrouver toutes les commandes
+        r.sadd("orders", order_id)
+        
+        # Synchroniser les quantités vendues par produit pour le rapport des articles les plus vendus
+        for item in items:
+            product_id = int(item['product_id'])
+            quantity = int(float(item['quantity']))  # Convertir en entier pour le compteur
+            
+            # Utiliser incrby pour mettre à jour la quantité vendue de chaque article
+            r.incrby(f"product_sales:{product_id}", quantity)
+        
+        print(f"Commande {order_id} ajoutée à Redis avec synchronisation des ventes de produits")
+        
+    except Exception as e:
+        print(f"Erreur lors de l'ajout à Redis : {e}")
 
 def delete_order_from_redis(order_id):
     """Delete order from Redis"""
-    pass
+    try:
+        r = get_redis_conn()
+        order_key = f"order:{order_id}"
+        
+        # Avant de supprimer, récupérer les items de la commande depuis MySQL pour décrémenter les ventes
+        from models.order_item import OrderItem
+        session = get_sqlalchemy_session()
+        try:
+            order_items = session.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+            
+            # Décrémenter les compteurs de ventes pour chaque produit
+            for item in order_items:
+                quantity = int(item.quantity)
+                r.decrby(f"product_sales:{item.product_id}", quantity)
+                
+        except Exception as e:
+            print(f"Erreur lors de la décrémentation des ventes : {e}")
+        finally:
+            session.close()
+        
+        # Supprimer la commande principale
+        deleted_order = r.delete(order_key)
+        
+        # Retirer l'ID de la commande du SET d'index
+        r.srem("orders", order_id)
+        
+        if deleted_order > 0:
+            print(f"Commande {order_id} supprimée de Redis avec décrémentation des ventes")
+        else:
+            print(f"Commande {order_id} non trouvée dans Redis")
+            
+    except Exception as e:
+        print(f"Erreur lors de la suppression de Redis : {e}")
 
 def sync_all_orders_to_redis():
     """ Sync orders from MySQL to Redis """
-    # redis
+    print("Vérification de la synchronisation Redis...")
     r = get_redis_conn()
-    orders_in_redis = r.keys(f"order:*")
+    orders_in_redis = r.keys("order:*")
     rows_added = 0
+    
     try:
         if len(orders_in_redis) == 0:
-            # mysql
-            orders_from_mysql = []
-            for order in orders_from_mysql:
-                # TODO: terminez l'implementation
-                print(order)
-            rows_added = len(orders_from_mysql)
+            print("Redis est vide, synchronisation depuis MySQL...")
+            # Récupérer toutes les commandes depuis MySQL
+            orders_from_mysql = get_orders_from_mysql()
+            
+            # Utiliser une session pour récupérer les order_items
+            from models.order_item import OrderItem
+            session = get_sqlalchemy_session()
+            
+            try:
+                for order in orders_from_mysql:
+                    # Créer une clé unique pour chaque commande
+                    order_key = f"order:{order.id}"
+                    
+                    # Stocker les données de la commande dans Redis comme hash
+                    order_data = {
+                        'id': str(order.id),
+                        'user_id': str(order.user_id),
+                        'total_amount': str(order.total_amount),
+                        'created_at': str(getattr(order, 'created_at', ''))
+                    }
+                    
+                    # Utiliser hset pour stocker toutes les données d'un coup
+                    r.hset(order_key, mapping=order_data)
+                    
+                    # Ajouter l'ID de la commande dans le SET d'index
+                    r.sadd("orders", order.id)
+                    
+                    # Synchroniser les compteurs de ventes pour les order_items
+                    order_items = session.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+                    for item in order_items:
+                        quantity = int(item.quantity)
+                        r.incrby(f"product_sales:{item.product_id}", quantity)
+                    
+                    rows_added += 1
+            finally:
+                session.close()
+            
+            print(f"Synchronisation terminée : {rows_added} commandes ajoutées à Redis")
         else:
-            print('Redis already contains orders, no need to sync!')
+            print(f"Redis contient déjà {len(orders_in_redis)} commandes, pas de synchronisation nécessaire")
     except Exception as e:
-        print(e)
+        print(f"Erreur lors de la synchronisation : {e}")
         return 0
-    finally:
-        return len(orders_in_redis) + rows_added
+    
+    return len(orders_in_redis) + rows_added

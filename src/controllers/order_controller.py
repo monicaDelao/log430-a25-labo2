@@ -4,7 +4,7 @@ SPDX - License - Identifier: LGPL - 3.0 - or -later
 Auteurs : Gabriel C. Ullmann, Fabio Petrillo, 2025
 """
 from commands.write_order import add_order, delete_order, sync_all_orders_to_redis
-from queries.read_order import get_orders_from_mysql
+from queries.read_order import get_orders_from_mysql, get_orders_from_redis, get_highest_spending_users, get_most_sold_products
 
 def create_order(user_id, items):
     """Create order, use WriteOrder model"""
@@ -35,7 +35,7 @@ def list_orders_from_mysql(limit):
 def list_orders_from_redis(limit):
     """Get last X orders from Redis, use ReadOrder model"""
     try:
-        return get_orders_from_mysql(limit)
+        return get_orders_from_redis(limit)
     except Exception as e:
         print(e)
         return "Une erreur s'est produite lors de la requête de base de données. Veuillez consulter les logs pour plus d'informations."
@@ -45,6 +45,17 @@ def populate_redis_from_mysql():
    sync_all_orders_to_redis()
 
 def get_report_highest_spending_users():
-    """Get orders report: highest spending users"""
-    # TODO: appeler la méthode correspondante dans read_order.py
-    return []
+    """Get orders report: highest spending users from Redis"""
+    try:
+        return get_highest_spending_users()
+    except Exception as e:
+        print(e)
+        return "Une erreur s'est produite lors de la génération du rapport. Veuillez consulter les logs pour plus d'informations."
+
+def get_report_most_sold_products():
+    """Get orders report: most sold products from Redis"""
+    try:
+        return get_most_sold_products()
+    except Exception as e:
+        print(e)
+        return "Une erreur s'est produite lors de la génération du rapport. Veuillez consulter les logs pour plus d'informations."

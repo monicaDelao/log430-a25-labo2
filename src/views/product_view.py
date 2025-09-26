@@ -20,7 +20,6 @@ def show_product_form():
             </tr> """ for product in products]
     return get_template(f"""
         <h2>Articles</h2>
-        <p>Voici les 10 derniers enregistrements :</p>
         <table class="table">
             <tr>
                 <th>ID</th> 

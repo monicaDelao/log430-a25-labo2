@@ -10,6 +10,7 @@ from controllers.user_controller import create_user, delete_user, list_users
 def show_user_form():
     """ Show user form and list """
     users = list_users(10)
+    
     rows = [f"""
             <tr>
                 <td>{user.id}</td>
@@ -18,7 +19,6 @@ def show_user_form():
             </tr> """ for user in users]
     return get_template(f"""
         <h2>Utilisateurs</h2>
-        <p>Voici les 10 derniers enregistrements :</p>
         <table class="table">
             <tr>
                 <th>ID</th> 
