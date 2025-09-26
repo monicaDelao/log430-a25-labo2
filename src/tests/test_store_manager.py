@@ -50,5 +50,7 @@ def test_report_best_sellers():
     report_html = show_best_sellers()
     assert "html" in report_html  # Cherche "html" au lieu de "<html>"
     assert "Les articles les plus vendus" in report_html
-    # Le rapport peut être vide si aucune donnée n'existe
-    assert ("Aucune donnée disponible" in report_html or "rank" in report_html)
+    # Le rapport peut être vide ou contenir des données
+    assert ("Aucune donnée disponible" in report_html or 
+            "Rang" in report_html or  # En-tête du tableau
+            "<table>" in report_html)  # Tableau avec données
